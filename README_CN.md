@@ -13,7 +13,7 @@
 # 结果 #
 [![E167Ps.md.png](https://s2.ax1x.com/2019/04/29/E167Ps.md.png)](https://imgchr.com/i/E167Ps)
 
-# Licence #
+# 协议 #
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may
     not use this file except in compliance with the License. You may obtain
