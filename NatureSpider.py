@@ -21,11 +21,11 @@ logging.basicConfig(level=logging.DEBUG,format='%(asctime)s-%(message)s')
 
 class Spider():
     def __init__(self,storedir='Nature'):
-        self.storedir   = storedir 
         self.headers    = {'User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0', 'Connection':'close'}
         self.root_url1  = "https://www.nature.com"
         self.root_url2  = "https://www.nature.com/nature/articles?type=nature-podcast"
         self.podprefix  = 'Nature-' 
+        self.storedir   = storedir 
         self.years      = set() 
         self.year_urls  = set() 
 
@@ -63,100 +63,7 @@ class Spider():
             return False
         return True
 
-    #*******************2:下载及处理函数*******************************#
-    def _getpd_urls_nexl(self,url):
-        '''获取当年的博客目录和下一页链接'''
-        next_url = None 
-        podcast_urls = [] 
-
-        html_res = get(url.replace("&amp;","&"),headers=self.headers)
-        if 200 == html_res.status_code:
-            html_res.encoding='utf-8'
-            soup  = BeautifulSoup(html_res.text,'html.parser') 
-
-            #1.提取下一页链接
-            link  = soup.find('li',attrs={'data-page':'next'}) 
-            if link != None:
-                patn=re.compile(r'/nature/articles\?searchType=(.*?)year(.*?)page=\d')
-                match = patn.search(str(link))
-                try:
-                    next_url = urljoin(self.root_url1,match.group(0))
-                except:
-                    next_url = None 
-
-            #2.提取本页播客项
-            patn  = re.compile(r'/articles/(\w+)')
-            links = soup.find_all('a',href=patn)
-            if links != None: 
-                podcast_urls=[urljoin(self.root_url1,link['href']) for link in links] 
-
-        return next_url, podcast_urls
-
-    def main_control(self):
-        ''''下载控制器'''
-        for year_url in self.year_urls:
-            next_url,podcast_urls = self._getpd_urls_nexl(year_url)
-
-            year = year_url[-4:]
-            if year == '2019':
-                continue
-
-            self._download_multi(year,podcast_urls)
-
-            while next_url != None:
-                next_url,podcast_urls = self._getpd_urls_nexl(next_url)
-                self._download_multi(year,podcast_urls)
-
-            os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
-
-    #******************3.下载逻辑函数********************************#
-    def _download_multi(self,year,urls):
-        '''分布式爬虫'''
-        if urls == []:
-            return None
-
-        pool = Pool(5)
-        for url in urls:
-            pool.apply_async(self._func,(url,year))
-
-        pool.close()
-        pool.join()
-
-    def _func(self,url,year):
-        time.sleep(3) #爬取速度缓和
-        html_res = get(url,headers=self.headers)
-        if 200 == html_res.status_code:
-            html_res.encoding = 'utf-8'
-            soup  = BeautifulSoup(html_res.text,'html.parser') 
-            radio_name,script_name,radio_url = self._get_radio_name_and_url(year,soup)
-
-            if not os.path.exists(script_name): 
-                self._download_transcript(soup,script_name)
-
-            if not os.path.exists(radio_name): 
-                self._download_podcast(radio_url,radio_name)
-
-
-    def _get_radio_name_and_url(self,year,soup):
-        '''抽取信息以设置音频和文本的名字'''
-        patn        = re.compile(r'/magazine-assets/(\S+)/(\S+)\.mpga')
-        link        = soup.find('a',href=patn) 
-
-        timestr     = soup.find('time',attrs={'itemprop':'datePublished'}) 
-        timetxt     = timestr.getText().split()
-        timename    = '-'.join(timetxt)
-
-        flprefix    = ''.join([self.storedir, year, '/'])
-        basename    = ''.join([self.podprefix,timename])
-
-        radio_name  = ''.join([flprefix, basename, '.mp3'])
-        script_name = ''.join([flprefix, basename, '.txt'])
-
-        radio_url   = ''.join([self.root_url1,link['href']]) 
-
-        return radio_name,script_name,radio_url
-
-    #**********************真正的2个下载器#########################
+    #********************2.音频和脚本文件下载函数***************
     def _download_podcast(self,radio_url,radio_name):
         with closing(get(radio_url,stream=True,headers=self.headers)) as res:
             size = 1024*20
@@ -198,6 +105,95 @@ class Spider():
             if text != []:
                 fObj.write(''.join(text))
 
+    #********************3.播客文件名和音频链接提取器***********
+    def _get_radio_name_and_url(self,year,soup):
+        '''抽取信息以设置音频和文本的名字'''
+        patn        = re.compile(r'/magazine-assets/(\S+)/(\S+)\.mpga')
+        link        = soup.find('a',href=patn) 
+
+        timestr     = soup.find('time',attrs={'itemprop':'datePublished'}) 
+        timetxt     = timestr.getText().split()
+        timename    = '-'.join(timetxt)
+
+        flprefix    = ''.join([self.storedir, year, '/'])
+        basename    = ''.join([self.podprefix,timename])
+
+        radio_name  = ''.join([flprefix, basename, '.mp3'])
+        script_name = ''.join([flprefix, basename, '.txt'])
+
+        radio_url   = ''.join([self.root_url1,link['href']]) 
+
+        return radio_name,script_name,radio_url
+
+    #********************4.分布式播客下载处理器*****************
+    def _func(self,url,year):
+        time.sleep(3) #爬取速度缓和
+        html_res = get(url,headers=self.headers)
+        if 200 == html_res.status_code:
+            html_res.encoding = 'utf-8'
+            soup  = BeautifulSoup(html_res.text,'html.parser') 
+            radio_name,script_name,radio_url = self._get_radio_name_and_url(year,soup)
+
+            if not os.path.exists(script_name): 
+                self._download_transcript(soup,script_name)
+
+            if not os.path.exists(radio_name): 
+                self._download_podcast(radio_url,radio_name)
+
+    def _download_multi(self,year,urls):
+        '''分布式爬虫'''
+        if urls == []:
+            return None
+
+        pool = Pool(5)
+        for url in urls:
+            pool.apply_async(self._func,(url,year))
+
+        pool.close()
+        pool.join()
+
+    #********************5.下一页链接和当前页播客链接***********
+    def _getpd_urls_nexl(self,url):
+        '''获取当年的博客目录和下一页链接'''
+        next_url = None 
+        podcast_urls = [] 
+
+        html_res = get(url.replace("&amp;","&"),headers=self.headers)
+        if 200 == html_res.status_code:
+            html_res.encoding='utf-8'
+            soup  = BeautifulSoup(html_res.text,'html.parser') 
+
+            #1.提取下一页链接
+            link  = soup.find('li',attrs={'data-page':'next'}) 
+            if link != None:
+                patn=re.compile(r'/nature/articles\?searchType=(.*?)year(.*?)page=\d')
+                match = patn.search(str(link))
+                try:
+                    next_url = urljoin(self.root_url1,match.group(0))
+                except:
+                    next_url = None 
+            #2.提取本页播客项
+            patn  = re.compile(r'/articles/(\w+)')
+            links = soup.find_all('a',href=patn)
+            if links != None: 
+                podcast_urls=[urljoin(self.root_url1,link['href']) for link in links] 
+
+        return next_url, podcast_urls
+
+    #********************6.下载启动器***************************
+    def main_control(self):
+        ''''下载控制器'''
+        for year_url in self.year_urls:
+            year = year_url[-4:]
+            next_url,podcast_urls = self._getpd_urls_nexl(year_url)
+            self._download_multi(year,podcast_urls)
+
+            while next_url != None:
+                next_url,podcast_urls = self._getpd_urls_nexl(next_url)
+                self._download_multi(year,podcast_urls)
+
+            os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
+
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
     start = time.time()
@@ -213,3 +209,4 @@ if __name__ == "__main__":
         minute = (end - start)/60
         print("Download done in %.2f minute(s)."%(minute))
         #print("下载完成，用时%.2f分钟."%(minute)) 
+
