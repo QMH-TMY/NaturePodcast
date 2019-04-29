@@ -2,20 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # 26.Apr 2019 
-# Copyright 2019 Shieber
-# All Rights Reserved.
-#
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
+# Shieber in UESTC 
+# QMH_XB_FLTMY@yahoo.com
+# 
 
 import re
 import os
@@ -24,7 +13,6 @@ import logging
 import time
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-import requests
 from requests import get
 from contextlib import closing
 from urllib.parse import urljoin
@@ -215,10 +203,6 @@ if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
     start = time.time()
 
-    requests.adapters.DEFAULT_RETRIES = 5
-    session = requests.session()
-    session.keep_alive = False
-
     spider = Spider()
     try:
         spider.get_year_urls()
@@ -228,4 +212,5 @@ if __name__ == "__main__":
     finally:
         end = time.time()
         minute = (end - start)/60
-        print("下载完成，用时%.2f分钟."%(minute))
+        print("Download done in %.2f minute(s)."%(minute))
+        #print("下载完成，用时%.2f分钟."%(minute)) 
