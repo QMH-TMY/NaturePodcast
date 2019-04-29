@@ -10,5 +10,5 @@
 
 	注意: 需要python3，且要安装了latex，和pandoc
 
-# 自然博客 #
+# 自然播客 #
 [![E1vAZF.md.png](https://s2.ax1x.com/2019/04/29/E1vAZF.md.png)](https://imgchr.com/i/E1vAZF)
