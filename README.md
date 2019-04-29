@@ -6,7 +6,7 @@
 
 Download all scientific podcasts and related transcripts(PDF version) from the very famous and import website:[Nature](https://www.nature.com/)
 
-All Podcasts and pdf files will be stored in dirs like Nature20xx/ as time goes by.
+All podcasts and pdf files will be stored in dirs like Science20xx/, xx will change as time goes by.
 
 # Usage #
 	$ python NatureSpider.py
