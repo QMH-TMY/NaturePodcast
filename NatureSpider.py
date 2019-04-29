@@ -62,7 +62,6 @@ class Spider():
             print(err)
             return False
         return True
-    #**************************************************#
 
     #*******************2:下载及处理函数*******************************#
     def _getpd_urls_nexl(self,url):
