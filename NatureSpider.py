@@ -223,3 +223,4 @@ if __name__ == "__main__":
         minute = (end - start)/60
         print("Download %d podcast(s) done in %.2f minute(s)."%(spider.downloaded,minute))
         #print("下载完成，用时%.2f分钟."%(minute)) 
+        
