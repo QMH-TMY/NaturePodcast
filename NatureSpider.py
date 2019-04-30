@@ -20,11 +20,12 @@ from multiprocessing import Pool
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s-%(message)s')
 
 class Spider():
-    def __init__(self,storedir='Nature'):
+    def __init__(self,max_job=5,storedir='Nature'):
         self.headers    = {'User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0', 'Connection':'close'}
         self.root_url1  = "https://www.nature.com"
         self.root_url2  = "https://www.nature.com/nature/articles?type=nature-podcast"
         self.podprefix  = 'Nature-' 
+        self.max_job    = max_job
         self.storedir   = storedir 
         self.years      = set() 
         self.year_urls  = set() 
@@ -32,10 +33,9 @@ class Spider():
     #********************1.初始化*******************************
     def get_year_urls(self):
         '''获取对应年播客列表的url并准备好相应的目录以备存储下载内容'''
-        html_res = get(self.root_url2,headers=self.headers)
-        if 200 == html_res.status_code:
-            html_res.encoding='utf-8'
-            res = self._set_year_urls(html_res.text) 
+        soup = self._get_url_content(self.root_url2)
+        if soup:
+            res = self._set_year_urls(soup) 
 
             if res:
                 for year in self.years:
@@ -47,10 +47,9 @@ class Spider():
         else:
             sys.exit(-1)
     
-    def _set_year_urls(self,html_cnt):
+    def _set_year_urls(self,soup):
         '''提取各个年度的url'''
         root_url = "https://www.nature.com/nature/articles"
-        soup     = BeautifulSoup(html_cnt,'html.parser') 
         patn     = re.compile(r'\?type=nature-podcast')
         links    = soup.find_all('a',href=patn)
         try:
@@ -127,16 +126,12 @@ class Spider():
 
     #********************4.分布式播客下载处理器*****************
     def _func(self,url,year):
-        time.sleep(3) #爬取速度缓和
-        html_res = get(url,headers=self.headers)
-        if 200 == html_res.status_code:
-            html_res.encoding = 'utf-8'
-            soup  = BeautifulSoup(html_res.text,'html.parser') 
+        soup = self._get_url_content(url)
+        if soup:
             radio_name,script_name,radio_url = self._get_radio_name_and_url(year,soup)
 
             if not os.path.exists(script_name): 
                 self._download_transcript(soup,script_name)
-
             if not os.path.exists(radio_name): 
                 self._download_podcast(radio_url,radio_name)
 
@@ -145,7 +140,7 @@ class Spider():
         if urls == []:
             return None
 
-        pool = Pool(5)
+        pool = Pool(self.max_job)
         for url in urls:
             pool.apply_async(self._func,(url,year))
 
@@ -158,11 +153,8 @@ class Spider():
         next_url = None 
         podcast_urls = [] 
 
-        html_res = get(url.replace("&amp;","&"),headers=self.headers)
-        if 200 == html_res.status_code:
-            html_res.encoding='utf-8'
-            soup  = BeautifulSoup(html_res.text,'html.parser') 
-
+        soup = self._get_url_content(url)
+        if soup:
             #1.提取下一页链接
             link  = soup.find('li',attrs={'data-page':'next'}) 
             if link != None:
@@ -181,6 +173,16 @@ class Spider():
         return next_url, podcast_urls
 
     #********************6.下载启动器***************************
+    def _get_url_content(url):
+        '''网页下载函数'''
+        html_res = get(url,headers=self.headers)
+        if 200 == html_res.status_code:
+            html_res.encoding='utf-8'
+            soup = BeautifulSoup(html_res.text,'html.parser') 
+            return soup
+        else:
+            return None
+
     def main_control(self):
         ''''下载控制器'''
         for year_url in self.year_urls:
@@ -193,6 +195,7 @@ class Spider():
                 self._download_multi(year,podcast_urls)
 
             os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
+            time.sleep(5)     #爬取速度缓和
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
