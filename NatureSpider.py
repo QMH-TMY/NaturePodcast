@@ -77,6 +77,8 @@ class Spider():
                 for chunk in tqdm(res.iter_content(chunk_size=size),ascii=True,desc=info):
                     rObj.write(chunk)
 
+            self.downloaded += 1
+
     def _download_transcript(self,soup,script_name):
         content  = soup.find('div',class_="article__transcript") 
         if content == None:
@@ -191,12 +193,10 @@ class Spider():
             year = year_url[-4:]
             next_url,podcast_urls = self._getpd_urls_nexl(year_url)
             self._download_multi(year,podcast_urls)
-            self.downloaded += len(podcast_urls) 
 
             while next_url != None:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
-                self.downloaded += len(podcast_urls) 
                 time.sleep(5)                          #爬取速度缓和
 
             os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
