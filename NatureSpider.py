@@ -193,9 +193,9 @@ class Spider():
             while next_url != None:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
+                time.sleep(5)     #爬取速度缓和
 
             os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
-            time.sleep(5)     #爬取速度缓和
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
