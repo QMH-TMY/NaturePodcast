@@ -25,6 +25,7 @@ class Spider():
         self.root_url1  = "https://www.nature.com"
         self.root_url2  = "https://www.nature.com/nature/articles?type=nature-podcast"
         self.podprefix  = 'Nature-' 
+        self.downloaded = 0
         self.max_job    = max_job
         self.storedir   = storedir 
         self.years      = set() 
@@ -41,7 +42,7 @@ class Spider():
                 for year in self.years:
                     store_dir = ''.join([self.storedir,year])
                     if not os.path.exists(store_dir):
-                        os.makedirs(store_dir) #创建对应年文件夹
+                        os.makedirs(store_dir)         #创建对应年文件夹
             else:
                 sys.exit(-1)
         else:
@@ -185,15 +186,18 @@ class Spider():
 
     def main_control(self):
         ''''下载控制器'''
+        self.get_year_urls()                           #初始化网页信息
         for year_url in self.year_urls:
             year = year_url[-4:]
             next_url,podcast_urls = self._getpd_urls_nexl(year_url)
             self._download_multi(year,podcast_urls)
+            self.downloaded += len(podcast_urls) 
 
             while next_url != None:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
-                time.sleep(5)     #爬取速度缓和
+                self.downloaded += len(podcast_urls) 
+                time.sleep(5)                          #爬取速度缓和
 
             os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
 
@@ -203,13 +207,12 @@ if __name__ == "__main__":
 
     spider = Spider()
     try:
-        spider.get_year_urls()
         spider.main_control()
     except Exception as err:
         print(err)
     finally:
         end = time.time()
         minute = (end - start)/60
-        print("Download done in %.2f minute(s)."%(minute))
+        print("Download %d podcast(s) done in %.2f minute(s)."%(spider.downloaded,minute))
         #print("下载完成，用时%.2f分钟."%(minute)) 
 
