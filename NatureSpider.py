@@ -11,6 +11,7 @@ import os
 import sys
 import logging
 import time
+import os.path as path
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from requests import get
@@ -24,6 +25,7 @@ class Spider():
         self.headers    = {'User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0', 'Connection':'close'}
         self.website_url= "https://www.nature.com"
         self.podcst_url = "https://www.nature.com/nature/articles?type=nature-podcast"
+        self.showstr    = 'downloading from Nature... '
         self.podprefix  = 'Nature-' 
         self.max_job    = max_job
         self.storedir   = storedir 
@@ -32,22 +34,25 @@ class Spider():
         self.downloaded = 0
 
     #********************1.初始化*******************************
+    def _mkdir_for_year(self):
+        for year in self.years:
+            store_dir = ''.join([self.storedir,year])
+            if not path.exists(store_dir):
+                os.makedirs(store_dir)         #创建对应年文件夹
+
     def get_year_urls(self):
         '''获取对应年播客列表的url并准备好相应的目录以备存储下载内容'''
         soup = self._get_url_content(self.podcst_url)
         if soup:
-            res = self._set_year_urls(soup) 
+            res = self._get_urls(soup) 
             if res:
-                for year in self.years:
-                    store_dir = ''.join([self.storedir,year])
-                    if not os.path.exists(store_dir):
-                        os.makedirs(store_dir)         #创建对应年文件夹
+                self._mkdir_for_year()
             else:
                 sys.exit(-1)
         else:
             sys.exit(-1)
     
-    def _set_year_urls(self,soup):
+    def _get_urls(self,soup):
         '''提取各个年度的url'''
         root_url = "https://www.nature.com/nature/articles"
         patn     = re.compile(r'\?type=nature-podcast')
@@ -63,18 +68,18 @@ class Spider():
         return True
 
     #********************2.音频和脚本文件下载函数***************
-    def _download_podcast(self,radio_url,radio_name):
-        with closing(get(radio_url,stream=True,headers=self.headers)) as res:
+    def _download_podcast(self,url,fl_name):
+        with closing(get(url,stream=True,headers=self.headers)) as res:
             size = 1024*20
             content_size = int(res.headers['content-length'])
 
-            if os.path.exists(radio_name) and os.path.getsize(radio_name) >= content_size:
+            if path.exists(fl_name) and path.getsize(fl_name) >= content_size:
                 return True 
 
-            info = ''.join(['downloading from Nature... ',os.path.basename(radio_name)])
-            with open(radio_name,'wb') as rObj:
-                for chunk in tqdm(res.iter_content(chunk_size=size),ascii=True,desc=info):
-                    rObj.write(chunk)
+            info = ''.join([self.showstr, path.basename(fl_name)])
+            with open(fl_name,'wb') as rObj:
+                for ck in tqdm(res.iter_content(chunk_size=size),ascii=True,desc=info):
+                    rObj.write(ck)
 
             self.downloaded += 1
 
@@ -134,9 +139,9 @@ class Spider():
         if soup:
             radio_name,script_name,radio_url = self._get_radio_name_and_url(year,soup)
 
-            if not os.path.exists(script_name): 
+            if not path.exists(script_name): 
                 self._download_transcript(soup,script_name)
-            if not os.path.exists(radio_name): 
+            if not path.exists(radio_name): 
                 self._download_podcast(radio_url,radio_name)
 
     def _download_multi(self,year,urls):
@@ -150,6 +155,8 @@ class Spider():
 
         pool.close()
         pool.join()
+
+        time.sleep(5)                          #爬取速度缓和
 
     #********************5.下一页链接和当前页播客链接***********
     def _getpd_urls_nexl(self,url):
@@ -168,11 +175,12 @@ class Spider():
                     next_url = urljoin(self.website_url,match.group(0))
                 except:
                     next_url = None 
+
             #2.提取本页播客项
             patn  = re.compile(r'/articles/(\w+)')
             links = soup.find_all('a',href=patn)
             if links != None: 
-                podcast_urls=[urljoin(self.websitet_url,link['href']) for link in links] 
+                podcast_urls=[urljoin(self.websitet_url,lk['href']) for lk in links] 
 
         return next_url, podcast_urls
 
@@ -198,7 +206,6 @@ class Spider():
             while next_url != None:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
-                time.sleep(5)                          #爬取速度缓和
 
             os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
 
@@ -216,4 +223,3 @@ if __name__ == "__main__":
         minute = (end - start)/60
         print("Download %d podcast(s) done in %.2f minute(s)."%(spider.downloaded,minute))
         #print("下载完成，用时%.2f分钟."%(minute)) 
-
