@@ -25,11 +25,11 @@ class Spider():
         self.root_url1  = "https://www.nature.com"
         self.root_url2  = "https://www.nature.com/nature/articles?type=nature-podcast"
         self.podprefix  = 'Nature-' 
-        self.downloaded = 0
         self.max_job    = max_job
         self.storedir   = storedir 
         self.years      = set() 
         self.year_urls  = set() 
+        self.downloaded = 0
 
     #********************1.初始化*******************************
     def get_year_urls(self):
@@ -37,7 +37,6 @@ class Spider():
         soup = self._get_url_content(self.root_url2)
         if soup:
             res = self._set_year_urls(soup) 
-
             if res:
                 for year in self.years:
                     store_dir = ''.join([self.storedir,year])
@@ -81,6 +80,7 @@ class Spider():
 
     def _download_transcript(self,soup,script_name):
         content  = soup.find('div',class_="article__transcript") 
+
         if content == None:
             return None
 
@@ -100,6 +100,7 @@ class Spider():
                     text.append(''.join([tx,'\n\n']))
                 else:
                     text.append(''.join([tx,': \n']))
+
                 if len(text) == 20:
                     fObj.write(''.join(text))
                     text = []
@@ -114,11 +115,11 @@ class Spider():
         link        = soup.find('a',href=patn) 
 
         timestr     = soup.find('time',attrs={'itemprop':'datePublished'}) 
-        timetxt     = timestr.getText().split()
-        timename    = '-'.join(timetxt)
+        timestr     = timestr.getText().split()
+        timemid     = '-'.join(timestr)
 
         flprefix    = ''.join([self.storedir, year, '/'])
-        basename    = ''.join([self.podprefix,timename])
+        basename    = ''.join([self.podprefix,timemid])
 
         radio_name  = ''.join([flprefix, basename, '.mp3'])
         script_name = ''.join([flprefix, basename, '.txt'])
