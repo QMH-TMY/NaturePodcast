@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
-# 26.Apr 2019 
+# 30.Apr 2019 
 # Shieber in UESTC 
 # QMH_XB_FLTMY@yahoo.com
 # 
@@ -22,8 +22,8 @@ logging.basicConfig(level=logging.DEBUG,format='%(asctime)s-%(message)s')
 class Spider():
     def __init__(self,max_job=5,storedir='Nature'):
         self.headers    = {'User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0', 'Connection':'close'}
-        self.root_url1  = "https://www.nature.com"
-        self.root_url2  = "https://www.nature.com/nature/articles?type=nature-podcast"
+        self.website_url= "https://www.nature.com"
+        self.podcst_url = "https://www.nature.com/nature/articles?type=nature-podcast"
         self.podprefix  = 'Nature-' 
         self.max_job    = max_job
         self.storedir   = storedir 
@@ -34,7 +34,7 @@ class Spider():
     #********************1.初始化*******************************
     def get_year_urls(self):
         '''获取对应年播客列表的url并准备好相应的目录以备存储下载内容'''
-        soup = self._get_url_content(self.root_url2)
+        soup = self._get_url_content(self.podcst_url)
         if soup:
             res = self._set_year_urls(soup) 
             if res:
@@ -118,13 +118,13 @@ class Spider():
         timestr     = timestr.getText().split()
         timemid     = '-'.join(timestr)
 
-        flprefix    = ''.join([self.storedir, year, '/'])
-        basename    = ''.join([self.podprefix,timemid])
+        dirprefix   = ''.join([self.storedir, year, '/'])
+        midname     = ''.join([self.podprefix,timemid])
 
-        radio_name  = ''.join([flprefix, basename, '.mp3'])
-        script_name = ''.join([flprefix, basename, '.txt'])
+        radio_name  = ''.join([dirprefix, midname, '.mp3'])
+        script_name = ''.join([dirprefix, midname, '.txt'])
 
-        radio_url   = ''.join([self.root_url1,link['href']]) 
+        radio_url   = ''.join([self.website_url,link['href']]) 
 
         return radio_name,script_name,radio_url
 
@@ -165,14 +165,14 @@ class Spider():
                 patn=re.compile(r'/nature/articles\?searchType=(.*?)year(.*?)page=\d')
                 match = patn.search(str(link))
                 try:
-                    next_url = urljoin(self.root_url1,match.group(0))
+                    next_url = urljoin(self.website_url,match.group(0))
                 except:
                     next_url = None 
             #2.提取本页播客项
             patn  = re.compile(r'/articles/(\w+)')
             links = soup.find_all('a',href=patn)
             if links != None: 
-                podcast_urls=[urljoin(self.root_url1,link['href']) for link in links] 
+                podcast_urls=[urljoin(self.websitet_url,link['href']) for link in links] 
 
         return next_url, podcast_urls
 
