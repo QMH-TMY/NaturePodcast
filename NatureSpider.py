@@ -202,7 +202,7 @@ class Spider():
             year = year_url[-4:]
             next_url,podcast_urls = self._getpd_urls_nexl(year_url)
             self._download_multi(year,podcast_urls)
-
+        
             while next_url != None:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
