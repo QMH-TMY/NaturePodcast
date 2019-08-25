@@ -83,8 +83,8 @@ class Spider():
 
     #********************2.音频和脚本文件下载函数***************
     def _download_podcast(self,url,fl_name):
+        size = 1024*20
         with closing(get(url,stream=True,headers=self.headers)) as res:
-            size = 1024*20
             content_size = int(res.headers['content-length'])
 
             if path.exists(fl_name) and path.getsize(fl_name) >= content_size:
