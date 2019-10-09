@@ -1,3 +1,10 @@
+----------------
+# Compatible OS #
+----------------
+	Mac OS
+	Windows
+	Unix-like OS
+
 -------------
 # Description #
 -------------
