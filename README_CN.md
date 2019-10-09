@@ -2,7 +2,6 @@
 # 兼容系统 #
 -----------
 	Mac OS
-	Windows
 	Unix-like OS
 
 -------------
