@@ -25,6 +25,7 @@ import os
 import sys
 import logging
 import time
+import requests
 import os.path as path
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -32,6 +33,7 @@ from requests import get
 from contextlib import closing
 from urllib.parse import urljoin
 from multiprocessing import Pool
+
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s-%(message)s')
 
 class Spider():
@@ -66,7 +68,7 @@ class Spider():
         else:
             sys.exit(-1)
     
-    def _get_urls(self,soup):
+    def _get_urls(self, soup):
         '''提取各个年度的url'''
         root_url = "https://www.nature.com/nature/articles"
         patn     = re.compile(r'\?type=nature-podcast')
@@ -83,8 +85,10 @@ class Spider():
 
     #********************2.音频和脚本文件下载函数***************
     def _download_podcast(self,url,fl_name):
+        s = requests.session()
+        s.keep_alive = False
         size = 1024*20
-        with closing(get(url,stream=True,headers=self.headers)) as res:
+        with closing(s.get(url,stream=True,headers=self.headers)) as res:
             content_size = int(res.headers['content-length'])
 
             if path.exists(fl_name) and path.getsize(fl_name) >= content_size:
@@ -172,6 +176,13 @@ class Spider():
 
         time.sleep(5)                          #爬取速度缓和
 
+    def _download_single(self,year,urls):
+        if urls == []:
+            return None
+
+        for url in urls:
+            self._func(url,year)
+
     #********************5.下一页链接和当前页播客链接***********
     def _getpd_urls_nexl(self,url):
         '''获取当年的博客目录和下一页链接'''
@@ -194,14 +205,16 @@ class Spider():
             patn  = re.compile(r'/articles/(\w+)')
             links = soup.find_all('a',href=patn)
             if links != None: 
-                podcast_urls=[urljoin(self.websitet_url,lk['href']) for lk in links] 
+                podcast_urls=[urljoin(self.website_url,lk['href']) for lk in links] 
 
         return next_url, podcast_urls
 
     #********************6.下载启动器***************************
-    def _get_url_content(url):
+    def _get_url_content(self, url):
         '''网页下载函数'''
-        html_res = get(url,headers=self.headers)
+        s = requests.session()
+        s.keep_alive = False
+        html_res = s.get(url,headers=self.headers)
         if 200 == html_res.status_code:
             html_res.encoding='utf-8'
             soup = BeautifulSoup(html_res.text,'html.parser') 
@@ -214,18 +227,24 @@ class Spider():
         self.get_year_urls()                           #初始化网页信息
         for year_url in self.year_urls:
             year = year_url[-4:]
+            if year != '2019':  # 最新一年
+                continue        #
             next_url,podcast_urls = self._getpd_urls_nexl(year_url)
             self._download_multi(year,podcast_urls)
+            #self._download_single(year,podcast_urls) # 
         
             while next_url != None:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
+                #self._download_single(year,podcast_urls) #
 
             os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
     start = time.time()
+
+    requests.adapters.DEFAULT_RETRIES = 5
 
     spider = Spider()
     try:
