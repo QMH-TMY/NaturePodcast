@@ -38,7 +38,10 @@ logging.basicConfig(level=logging.DEBUG,format='%(asctime)s-%(message)s')
 
 class Spider():
     def __init__(self,max_job=5,storedir='Nature'):
-        self.headers    = {'User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0', 'Connection':'close'}
+        self.headers    = {
+                            'User-Agent':'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) \
+                             Gecko/20100101 Firefox/66.0', 
+                            'Connection':'close'}
         self.website_url= "https://www.nature.com"
         self.podcst_url = "https://www.nature.com/nature/articles?type=nature-podcast"
         self.showstr    = 'downloading from Nature... '
@@ -90,7 +93,6 @@ class Spider():
         size = 1024*20
         with closing(s.get(url,stream=True,headers=self.headers)) as res:
             content_size = int(res.headers['content-length'])
-
             if path.exists(fl_name) and path.getsize(fl_name) >= content_size:
                 return True 
 
@@ -103,8 +105,7 @@ class Spider():
 
     def _download_transcript(self,soup,script_name):
         content  = soup.find('div',class_="article__transcript") 
-
-        if content == None:
+        if not content:
             return None
 
         title    = content.find('h3').getText() 
@@ -128,7 +129,7 @@ class Spider():
                     fObj.write(''.join(text))
                     text = []
 
-            if text != []:
+            if text:
                 fObj.write(''.join(text))
 
     #********************3.播客文件名和音频链接提取器***********
@@ -164,7 +165,7 @@ class Spider():
 
     def _download_multi(self,year,urls):
         '''分布式爬虫'''
-        if urls == []:
+        if not urls:
             return None
 
         pool = Pool(self.max_job)
@@ -177,7 +178,7 @@ class Spider():
         time.sleep(5)                          #爬取速度缓和
 
     def _download_single(self,year,urls):
-        if urls == []:
+        if not urls:
             return None
 
         for url in urls:
@@ -193,7 +194,7 @@ class Spider():
         if soup:
             #1.提取下一页链接
             link  = soup.find('li',attrs={'data-page':'next'}) 
-            if link != None:
+            if link:
                 patn=re.compile(r'/nature/articles\?searchType=(.*?)year(.*?)page=\d')
                 match = patn.search(str(link))
                 try:
@@ -204,7 +205,7 @@ class Spider():
             #2.提取本页播客项
             patn  = re.compile(r'/articles/(\w+)')
             links = soup.find_all('a',href=patn)
-            if links != None: 
+            if links: 
                 podcast_urls=[urljoin(self.website_url,lk['href']) for lk in links] 
 
         return next_url, podcast_urls
@@ -227,13 +228,13 @@ class Spider():
         self.get_year_urls()                           #初始化网页信息
         for year_url in self.year_urls:
             year = year_url[-4:]
-            if year != '2019':  # 最新一年
-                continue        #
+            if year != year_urls[0][-4:]:  # 最新一年
+                continue 
             next_url,podcast_urls = self._getpd_urls_nexl(year_url)
             self._download_multi(year,podcast_urls)
             #self._download_single(year,podcast_urls) # 
         
-            while next_url != None:
+            while next_url:
                 next_url,podcast_urls = self._getpd_urls_nexl(next_url)
                 self._download_multi(year,podcast_urls)
                 #self._download_single(year,podcast_urls) #
@@ -242,10 +243,9 @@ class Spider():
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
-    start = time.time()
-
     requests.adapters.DEFAULT_RETRIES = 5
 
+    start = time.time()
     spider = Spider()
     try:
         spider.main_control()
@@ -255,5 +255,3 @@ if __name__ == "__main__":
         end = time.time()
         minute = (end - start)/60
         print("Download %d podcast(s) done in %.2f minute(s)."%(spider.downloaded,minute))
-        #print("下载完成，用时%.2f分钟."%(minute)) 
-        
