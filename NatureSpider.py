@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 #    Author: Shieber
@@ -152,7 +152,7 @@ class Spider():
 
         return radio_name,script_name,radio_url
 
-    #********************4.分布式播客下载处理器*****************
+    #********************4.多线程播客下载处理器*****************
     def _func(self,url,year):
         soup = self._get_url_content(url)
         if soup:
@@ -164,7 +164,7 @@ class Spider():
                 self._download_podcast(radio_url,radio_name)
 
     def _download_multi(self,year,urls):
-        '''分布式爬虫'''
+        '''多线程爬虫'''
         if not urls:
             return None
 
@@ -239,7 +239,7 @@ class Spider():
                 self._download_multi(year,podcast_urls)
                 #self._download_single(year,podcast_urls) #
 
-            os.system('sh trans2pdf.sh %s'%(''.join([self.storedir,year,'/'])))
+            os.system(f'sh trans2pdf.sh {''.join([self.storedir,year,'/'])}')
 
 if __name__ == "__main__":
     logging.disable(logging.CRITICAL)                  #调试已关闭
@@ -254,4 +254,4 @@ if __name__ == "__main__":
     finally:
         end = time.time()
         minute = (end - start)/60
-        print("Download %d podcast(s) done in %.2f minute(s)."%(spider.downloaded,minute))
+        print(f"Download {spider.downloaded} podcast(s) done in {minute:.2f} minute(s).")
